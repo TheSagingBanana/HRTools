@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mary's Custom QR Code Generator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #ffe4f0;
+      text-align: center;
+      padding: 2rem;
+    }
+    .logo {
+      max-width: 120px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(255,182,193,0.5);
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 2rem;
+      color: #ff69b4;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    input[type="text"], select {
+      padding: 0.6rem;
+      font-size: 1rem;
+      width: 80%;
+      max-width: 400px;
+      border-radius: 10px;
+      border: 2px solid #ffb6c1;
+      background-color: #fff0f5;
+    }
+    .color-picker {
+      display: grid;
+      grid-template-columns: repeat(6, 40px);
+      gap: 8px;
+      margin-top: 0.5rem;
+    }
+    .color-option {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .color-option.selected {
+      border: 2px solid #333;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    }
+    .custom-color-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: #fff0f8;
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      border: 2px solid #ffb6c1;
+      box-shadow: 0 0 6px rgba(255,182,193,0.3);
+      font-size: 1rem;
+      color: #ff69b4;
+      margin-top: 0.5rem;
+    }
+    .custom-color-wrap input[type="color"] {
+      border: none;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    }
+    .qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .button-group {
+      display: flex;
+      gap: 1rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background: #ffb6c1;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    #qr-code {
+      display: none;
+      min-height: 260px;
+      background-color: white;
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(255,182,193,0.5);
+    }
+  </style>
+</head>
+<body>
+  <img class="logo" src="https://tse4.mm.bing.net/th/id/OIP.Ut1mXVD17pS1NB2nanpfNgHaH-?rs=1&pid=ImgDetMain" alt="Logo" />
+  <h1>💗 Mary's Custom QR Code Generator 💗</h1>
+
+  <div class="controls">
+    <input type="text" id="urlInput" placeholder="Paste your URL here..." />
+
+    <select id="stylePicker">
+      <option value="dots">Dots</option>
+      <option value="square">Square</option>
+      <option value="rounded">Rounded</option>
+      <option value="extra-rounded">Extra Rounded</option>
+      <option value="classy">Classy</option>
+    </select>
+
+    <select id="sizePicker">
+      <option value="250">Small (250×250)</option>
+      <option value="500">Medium (500×500)</option>
+      <option value="1000">Large (1000×1000)</option>
+    </select>
+
+    <div class="color-picker" id="colorPalette"></div>
+    <div class="custom-color-wrap">
+      <label for="customColorPicker">🌈 Pick Your Own Color:</label>
+      <input type="color" id="customColorPicker" value="#ff69b4" />
+    </div>
+  </div>
+
+  <div class="qr-wrapper">
+    <div class="button-group">
+      <button onclick="generateQRCode()">Generate</button>
+      <button onclick="downloadQRCode()">Save QR Code</button>
+    </div>
+    <div id="qr-code"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  <script>
+    const colors = [
+      "#ff69b4", "#8ecae6", "#219ebc", "#ffb703", "#fb8500",
+      "#ffc8dd", "#cdb4db", "#b5ead7", "#fcd5ce", "#a2d2ff",
+      "#d8e2dc", "#e5989b", "#ffcad4", "#f08080", "#c2f0fc",
+      "#000000", "#555555", "#aaaaaa", "#ffffff", "#001f3f"
+    ];
+
+    let selectedColor = colors[0];
+    let selectedSwatch = null;
+    let qr;
+
+    const palette = document.getElementById("colorPalette");
+    const customColorInput = document.getElementById("customColorPicker");
+
+    colors.forEach(color => {
+      const dot = document.createElement("div");
+      dot.className = "color-option";
+      dot.style.backgroundColor = color;
+      dot.onclick = () => {
+        selectedColor = color;
+        customColorInput.value = color;
+        if (selectedSwatch) selectedSwatch.classList.remove("selected");
+        dot.classList.add("selected");
+        selectedSwatch = dot;
+      };
+      palette.appendChild(dot);
+    });
+
+    customColorInput.addEventListener("input", (e) => {
+      selectedColor = e.target.value;
+      if (selectedSwatch) selectedSwatch.classList.remove("selected");
+      selectedSwatch = null;
+    });
+
+    function generateQRCode() {
+      const url = document.getElementById("urlInput").value;
+      const style = document.getElementById("stylePicker").value;
+      const size = parseInt(document.getElementById("sizePicker").value);
+      const container = document.getElementById("qr-code");
+
+      container.innerHTML = "";
+      if (!url.trim()) return;
+
+      container.style.display = "inline-block";
+
+      qr = new QRCodeStyling({
+        width: size,
+        height: size,
+        data: url,
+        dotsOptions: {
+          color: selectedColor,
+          type: style
+        },
+        backgroundOptions: {
+          color: "#fffafc"
+        },
+        cornersSquareOptions: {
+          type: "extra-rounded"
+        }
+      });
+
+      qr.append(container);
+    }
+
+    function downloadQRCode() {
+      if (qr) {
+        qr.download({ name: "Mary's_QR_Code", extension: "png" });
+      }
+    }
+  </script>
+</body>
+</html>
